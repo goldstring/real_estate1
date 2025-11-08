@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Add Room</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.min.js"></script>
+  <style>
+    label.error {
+      color: red;
+      font-size: 13px;
+      margin-top: 3px;
+    }
+  </style>
+</head>
+<body class="p-4">
+
+  <form id="addRoomForm" enctype="multipart/form-data" novalidate>
+
+    <div class="mb-3">
+      <label class="form-label">Branch *</label>
+      <input type="text" name="branch" class="form-control">
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Building *</label>
+      <input type="text" name="building" class="form-control">
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Wing *</label>
+      <input type="text" name="wing" class="form-control">
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Floor *</label>
+      <input type="text" name="floor" class="form-control">
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Shop/Flat Number *</label>
+      <input type="text" name="flat_number" class="form-control">
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Area *</label>
+      <input type="text" name="area" class="form-control">
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">RERA Carpet Area *</label>
+      <input type="text" name="rera_area" class="form-control">
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Config *</label>
+      <input type="text" name="config" class="form-control">
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Room Video Link *</label>
+      <input type="url" name="room_video" class="form-control">
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Floor Map *</label>
+      <input type="file" name="floor_map" class="form-control">
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Shop/Flat Map *</label>
+      <input type="file" name="flat_map" class="form-control">
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Type *</label><br>
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="type" value="Normal Room">
+        <label class="form-check-label">Normal Room</label>
+      </div>
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="type" value="Refuge Room">
+        <label class="form-check-label">Refuge Room</label>
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Remark</label>
+      <textarea name="remark" class="form-control"></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save</button>
+  </form>
+
+  <script>
+    // jQuery Validation
+    $(document).ready(function () {
+      $("#addRoomForm").validate({
+        rules: {
+          branch: "required",
+          building: "required",
+          wing: "required",
+          floor: "required",
+          flat_number: "required",
+          area: "required",
+          rera_area: "required",
+          config: "required",
+          room_video: {
+            required: true,
+            url: true
+          },
+          floor_map: "required",
+          flat_map: "required",
+          type: "required"
+        },
+        messages: {
+          branch: "Branch is required",
+          building: "Building is required",
+          wing: "Wing is required",
+          floor: "Floor is required",
+          flat_number: "Shop/Flat number is required",
+          area: "Area is required",
+          rera_area: "RERA carpet area is required",
+          config: "Config is required",
+          room_video: {
+            required: "Room video link is required",
+            url: "Please enter a valid URL"
+          },
+          floor_map: "Please upload floor map",
+          flat_map: "Please upload shop/flat map",
+          type: "Please select room type"
+        },
+        errorElement: "label",
+        errorClass: "error",
+        highlight: function (element) {
+          $(element).addClass("is-invalid");
+        },
+        unhighlight: function (element) {
+          $(element).removeClass("is-invalid");
+        },
+        submitHandler: function (form) {
+          alert("✅ Form is valid and ready to submit!");
+          // You can use form.submit() or AJAX here
+          return false;
+        }
+      });
+    });
+  </script>
+</body>
+</html>
