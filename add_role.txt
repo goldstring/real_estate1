@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Add Role — Checkbox error placement fix</title>
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.min.js"></script>
+
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; }
+
+    .form-control, .form-select { width: 360px; padding: 8px; margin-bottom: 6px; }
+
+    /* error label styling */
+    label.error {
+      color: #e63946;
+      font-weight: 600;
+      font-size: 13px;
+      display: block;
+      margin-top: 6px;
+    }
+
+    /* red border for invalid controls */
+    input.error, select.error, textarea.error {
+      border: 1px solid #e63946 !important;
+      box-shadow: none !important;
+    }
+
+    /* permissions grid */
+    .permissions { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 10px; }
+    .permissions .col { width: 220px; }
+
+    #globalError { color: #e63946; font-weight: 700; margin-top: 18px; display: none; }
+  </style>
+</head>
+<body>
+
+  <h3>ADD ROLE</h3>
+
+  <form id="addRoleForm" novalidate>
+    <label>Branch *</label><br />
+    <select name="branch" class="form-select">
+      <option value="">Select Branch</option>
+      <option value="Virar">Virar</option>
+      <option value="Mumbai">Mumbai</option>
+    </select>
+
+    <label>Role Name *</label><br />
+    <input type="text" name="role_name" class="form-control" />
+
+    <label>Description</label><br />
+    <textarea name="description" class="form-control" rows="2" style="width:360px"></textarea>
+
+    <h4 style="margin-top:18px">PERMISSIONS *</h4>
+    <p style="font-size:12px;color:#b55a00;margin:0 0 8px 0">
+      Note: To enable Add/Edit/Delete sub-permissions, select the corresponding main "View" permission first.
+    </p>
+
+    <!-- permissions container -->
+    <div class="permissions" id="permissionsGroup">
+      <div class="col"><label><input type="checkbox" name="permissions[]" value="view_building"> View Building</label></div>
+      <div class="col"><label><input type="checkbox" name="permissions[]" value="add_building"> Add Building</label></div>
+      <div class="col"><label><input type="checkbox" name="permissions[]" value="edit_building"> Edit Building</label></div>
+      <div class="col"><label><input type="checkbox" name="permissions[]" value="delete_building"> Delete Building</label></div>
+
+      <div class="col"><label><input type="checkbox" name="permissions[]" value="view_floor"> View Floor</label></div>
+      <div class="col"><label><input type="checkbox" name="permissions[]" value="add_floor"> Add Floor</label></div>
+      <div class="col"><label><input type="checkbox" name="permissions[]" value="edit_floor"> Edit Floor</label></div>
+      <div class="col"><label><input type="checkbox" name="permissions[]" value="delete_floor"> Delete Floor</label></div>
+    </div>
+
+    <!-- the plugin will insert the error label right after #permissionsGroup -->
+    <br />
+    <button type="submit" style="padding:8px 18px">Save</button>
+
+    <div id="globalError">PLEASE FIX THE HIGHLIGHTED ERRORS BEFORE SUBMITTING THE FORM.</div>
+  </form>
+
+  <script>
+    $(function () {
+      // custom rule: at least one checkbox required
+      $.validator.addMethod("requireOne", function () {
+        return $("input[name='permissions[]']:checked").length > 0;
+      }, "Please select at least one permission.");
+
+      $("#addRoleForm").validate({
+        ignore: [], // don't ignore hidden or checkbox elements
+        rules: {
+          branch: "required",
+          role_name: "required",
+          "permissions[]": { requireOne: true }
+        },
+        messages: {
+          branch: "Branch is required",
+          role_name: "Role name is required"
+        },
+        errorElement: "label",
+        errorPlacement: function (error, element) {
+          // For checkbox group -> place single error after the whole group container
+          if (element.attr("name") === "permissions[]") {
+            // remove any existing group error (prevents duplicates)
+            $("#permissionsGroup").next("label.error").remove();
+
+            // set an id so we can easily remove/hide it later if needed
+            error.attr("id", "permissions-error");
+
+            // insert the error label after the permissions container
+            error.insertAfter($("#permissionsGroup"));
+          } else {
+            // default placement
+            error.insertAfter(element);
+          }
+        },
+        success: function (label, element) {
+          // if plugin signals success for checkbox group, remove group error
+          if ($(element).attr("name") === "permissions[]") {
+            $("#permissionsGroup").next("label.error").remove();
+          }
+        },
+        highlight: function (element) {
+          // add 'error' class to inputs/selects (will get red border)
+          $(element).addClass("error");
+
+          // if this is a checkbox inside the group, also add error class to all checkboxes
+          if ($(element).is("[name='permissions[]']")) {
+            $("input[name='permissions[]']").addClass("error");
+          }
+        },
+        unhighlight: function (element) {
+          $(element).removeClass("error");
+          if ($(element).is("[name='permissions[]']")) {
+            $("input[name='permissions[]']").removeClass("error");
+            // remove the group error label when fixed
+            $("#permissionsGroup").next("label.error").remove();
+          }
+        },
+        invalidHandler: function (event, validator) {
+          // show global message
+          $("#globalError").show();
+
+          // scroll to first error element (if any)
+          if (validator.errorList.length) {
+            var $firstErr = $(validator.errorList[0].element);
+
+            // If first error belongs to checkbox group, scroll to the group container
+            if ($firstErr.is("[name='permissions[]']")) {
+              $('html,body').animate({ scrollTop: $("#permissionsGroup").offset().top - 20 }, 500);
+            } else {
+              $('html,body').animate({ scrollTop: $firstErr.offset().top - 20 }, 500);
+            }
+          }
+        },
+        submitHandler: function (form) {
+          // hide global message and actual submit or ajax
+          $("#globalError").hide();
+          // form.submit(); // enable when you want actual submit
+          alert("Form valid — submit here (or call AJAX).");
+          return false;
+        }
+      });
+
+      // Also re-validate checkbox group when user clicks any checkbox (so message disappears promptly)
+      $(document).on("change", "input[name='permissions[]']", function () {
+        $("input[name='permissions[]']").valid(); // triggers validation for group
+      });
+    });
+  </script>
+</body>
+</html>
