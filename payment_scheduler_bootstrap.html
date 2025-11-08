@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Payment Scheduler</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.1/font/bootstrap-icons.min.css">
+    <!-- SweetAlert2 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/11.10.1/sweetalert2.min.css">
+    
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding: 10px;
+        }
+        .card {
+            border-radius: 7px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            margin-bottom: 25px;
+        }
+        .card-body {
+            padding: 15px;
+        }
+        .form-label.required::after {
+            content: " *";
+            color: red;
+        }
+        .scheduler-row {
+            background-color: #f8f9fa;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
+        }
+        .section-divider {
+            border-top: 2px solid #0d6efd;
+            margin: 30px 0;
+            padding-top: 20px;
+        }
+        .loader-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+        .loader-overlay.active {
+            display: flex;
+        }
+        .error {
+            color: #dc3545;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+        .wing-checkbox {
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        .breadcrumb {
+            background-color: transparent;
+            padding: 0;
+            margin-bottom: 15px;
+        }
+        .scheduler-section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #0d6efd;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #0d6efd;
+        }
+        .validation-summary {
+            background-color: #f8d7da;
+            border: 1px solid #f5c2c7;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .validation-summary.active {
+            display: block;
+        }
+        .validation-summary ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .validation-summary li {
+            color: #842029;
+            margin-bottom: 5px;
+        }
+        
+        /* Responsive Styles */
+        @media (max-width: 768px) {
+            body {
+                padding: 5px;
+            }
+            .card-body {
+                padding: 10px;
+            }
+            .card-title {
+                font-size: 1.2rem;
+            }
+            .scheduler-row {
+                padding: 10px;
+            }
+            .scheduler-section-title {
+                font-size: 1rem;
+            }
+            .btn-group-mobile {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+            .btn-group-mobile .btn {
+                width: 100%;
+            }
+            .delete-row {
+                margin-top: 10px;
+                width: 100%;
+            }
+            .wing-checkbox {
+                width: 100%;
+                margin-right: 0;
+            }
+            .section-divider {
+                margin: 20px 0;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .breadcrumb {
+                font-size: 0.85rem;
+            }
+            h4.card-title {
+                font-size: 1.1rem;
+            }
+            .form-label {
+                font-size: 0.9rem;
+            }
+            .btn {
+                font-size: 0.9rem;
+                padding: 8px 12px;
+            }
+        }
+        
+        /* Desktop specific */
+        @media (min-width: 769px) {
+            body {
+                padding: 20px;
+            }
+            .card-body {
+                padding: 25px;
+            }
+            .container-fluid {
+                max-width: 1400px;
+                margin: 0 auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loader Overlay -->
+    <div class="loader-overlay" id="loaderOverlay">
+        <div class="spinner-border text-light" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <!-- Breadcrumb -->
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="#">Home</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Add Payment Scheduler</li>
+            </ol>
+        </nav>
+
+        <!-- Validation Summary -->
+        <div class="validation-summary" id="validationSummary">
+            <h6 class="mb-2"><i class="bi bi-exclamation-triangle-fill"></i> Please fix the following errors:</h6>
+            <ul id="validationList"></ul>
+        </div>
+
+        <!-- Main Card -->
+        <div class="card">
+            <div class="card-body">
+                <h4 class="card-title mb-3 mb-md-4">Add Payment Scheduler</h4>
+                
+                <form id="paymentSchedulerForm" novalidate>
+                    <input type="hidden" name="userId" id="userId">
+                    <input type="hidden" name="estate_id" id="estate_id">
+                    <input type="hidden" name="estate_name" id="estate_name">
+                    
+                    <div class="row g-3">
+                        <!-- Branch Selection (shown when multiple branches) -->
+                        <div class="col-12" id="branchSelectContainer" style="display: none;">
+                            <label for="branch" class="form-label required">Branch</label>
+                            <select class="form-select" id="branch" name="branch" required>
+                                <option value="">Select Branch</option>
+                            </select>
+                            <div class="invalid-feedback">Please select a branch.</div>
+                        </div>
+
+                        <!-- Building Selection -->
+                        <div class="col-12">
+                            <label for="building" class="form-label required">Building Name</label>
+                            <select class="form-select" id="building" name="building" required>
+                                <option value="">Select Building Name</option>
+                            </select>
+                            <div class="invalid-feedback">Please select a building.</div>
+                        </div>
+
+                        <!-- Wing Selection -->
+                        <div class="col-12" id="wingContainer" style="display: none;">
+                            <label class="form-label required">Wing Name</label>
+                            <div id="wingCheckboxes" class="d-flex flex-wrap"></div>
+                            <div class="invalid-feedback" id="wingError">Please select at least one wing.</div>
+                        </div>
+
+                        <!-- 70% Category Scheduler -->
+                        <div class="col-12">
+                            <div class="scheduler-section-title">
+                                <i class="bi bi-calendar-check"></i> Payment Schedule (70%)
+                            </div>
+                            <div id="scheduler70Container"></div>
+                            <button type="button" class="btn btn-primary w-100 mt-3" id="addSlabBtn">
+                                <i class="bi bi-plus-circle"></i> Add Slab
+                            </button>
+                        </div>
+
+                        <!-- Edit Manually Checkbox -->
+                        <div class="col-12 section-divider">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="editManual">
+                                <label class="form-check-label fw-bold" for="editManual">
+                                    <i class="bi bi-pencil-square"></i> Edit Manually (30% Schedule)
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- 30% Category Scheduler -->
+                        <div class="col-12">
+                            <div class="scheduler-section-title">
+                                <i class="bi bi-calendar-event"></i> Payment Schedule (30%)
+                            </div>
+                            <div id="scheduler30Container"></div>
+                        </div>
+
+                        <!-- Remark -->
+                        <div class="col-12">
+                            <label for="remark" class="form-label">Remark</label>
+                            <textarea class="form-control" id="remark" name="remark" rows="3"></textarea>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="col-12 col-md-6 col-lg-3">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-save"></i> Save
+                            </button>
+                        </div>
+                        
+                        <div class="col-12 col-md-6 col-lg-3">
+                            <button type="button" class="btn btn-secondary w-100" id="resetBtn">
+                                <i class="bi bi-arrow-clockwise"></i> Reset
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- jQuery -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery Validation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.20.0/jquery.validate.min.js"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/11.10.1/sweetalert2.all.min.js"></script>
+    <!-- js-cookie -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-cookie/3.0.5/js.cookie.min.js"></script>
+
+    <script>
+        // Configuration
+        const baseURL = 'YOUR_API_URL'; // Replace with your API URL
+        let loadingCount = 0;
+        let selectedBranch = '';
+        let schedulerData = [];
+        let editManualEnabled = false;
+
+        // Mock user data - Replace with actual user data from your auth system
+        const user = {
+            id: 1,
+            estate_id: 1,
+            estate_name: 'Sample Estate'
+        };
+
+        // Initialize scheduler with default data
+        function initializeScheduler() {
+            schedulerData = [
+                { helper: 10, percentage: 10, work_completion: 'Booking', tentative_date: '', is_disabled: true, category: '70%', is_deleted_option: false },
+                { helper: 20, percentage: 10, work_completion: 'AGREEMENT', tentative_date: '', is_disabled: true, category: '70%', is_deleted_option: false },
+                { helper: 35, percentage: 15, work_completion: 'PLINTH', tentative_date: '', is_disabled: true, category: '70%', is_deleted_option: false },
+                { helper: 0, percentage: 0, work_completion: '', tentative_date: '', is_disabled: false, category: '70%', is_deleted_option: false },
+                { helper: 73, percentage: 3, work_completion: 'WALL & INTERNAL PLASTER', tentative_date: '', is_disabled: true, category: '30%', is_deleted_option: false },
+                { helper: 75, percentage: 2, work_completion: 'FLOORING, DOORS & WINDOWS', tentative_date: '', is_disabled: true, category: '30%', is_deleted_option: false },
+                { helper: 80, percentage: 5, work_completion: 'STAIRCASE, LIFTWELLS & LOBBIES', tentative_date: '', is_disabled: true, category: '30%', is_deleted_option: false },
+                { helper: 85, percentage: 5, work_completion: 'EXTERNAL PLUMBING, PLASTER, ELEVATION & TERRACES WITH WATER PROOFING', tentative_date: '', is_disabled: true, category: '30%', is_deleted_option: false },
+                { helper: 90, percentage: 5, work_completion: 'INTERNAL WIRING & EXTERNAL PAINTING', tentative_date: '', is_disabled: true, category: '30%', is_deleted_option: false },
+                { helper: 95, percentage: 5, work_completion: 'LIFTS & WATER PUMPS', tentative_date: '', is_disabled: true, category: '30%', is_deleted_option: false },
+                { helper: 100, percentage: 5, work_completion: 'POSSESSION', tentative_date: '', is_disabled: true, category: '30%', is_deleted_option: false }
+            ];
+            renderScheduler();
+        }
+
+        // Loader functions
+        function showLoader() {
+            loadingCount++;
+            $('#loaderOverlay').addClass('active');
+        }
+
+        function hideLoader() {
+            loadingCount = Math.max(0, loadingCount - 1);
+            if (loadingCount === 0) {
+                $('#loaderOverlay').removeClass('active');
+            }
+        }
+
+        // Toast notification
+        function showToast(message, type = 'success') {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: type,
+                title: message,
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
+        }
+
+        // Render scheduler rows
+        function renderScheduler() {
+            const container70 = $('#scheduler70Container');
+            const container30 = $('#scheduler30Container');
+            container70.empty();
+            container30.empty();
+
+            schedulerData.forEach((item, index) => {
+                const row = createSchedulerRow(item, index);
+                if (item.category === '70%') {
+                    container70.append(row);
+                } else {
+                    container30.append(row);
+                }
+            });
+        }
+
+        // Create scheduler row HTML
+        function createSchedulerRow(item, index) {
+            const disabledAttr = item.is_disabled ? 'disabled' : '';
+            const deleteBtn = item.is_deleted_option ? 
+                `<div class="col-12 col-md-auto mt-2 mt-md-0">
+                    <button type="button" class="btn btn-danger btn-sm delete-row w-100" data-index="${index}">
+                        <i class="bi bi-trash"></i> Delete
+                    </button>
+                </div>` : '';
+
+            return `
+                <div class="scheduler-row" data-index="${index}" data-category="${item.category}">
+                    <div class="row g-2">
+                        <div class="col-12 col-md-6 col-lg-3">
+                            <label class="form-label">Helper (%)</label>
+                            <input type="number" class="form-control scheduler-helper" 
+                                   value="${item.helper}" disabled>
+                        </div>
+                        <div class="col-12 col-md-6 col-lg-3">
+                            <label class="form-label required">Percentage (%)</label>
+                            <input type="number" class="form-control scheduler-percentage" 
+                                   name="scheduler[${index}][percentage]"
+                                   value="${item.percentage}" 
+                                   min="0"
+                                   step="0.01"
+                                   ${disabledAttr} 
+                                   required
+                                   data-msg-required="Percentage is required">
+                        </div>
+                        <div class="col-12 col-md-6 col-lg-3">
+                            <label class="form-label required">Work Completion</label>
+                            <input type="text" class="form-control scheduler-work" 
+                                   name="scheduler[${index}][work_completion]"
+                                   value="${item.work_completion}" 
+                                   ${item.category === '30%' ? 'disabled' : disabledAttr}
+                                   required
+                                   data-msg-required="Work completion is required"
+                                   maxlength="200">
+                        </div>
+                        <div class="col-12 col-md-6 col-lg-3">
+                            <label class="form-label required">Tentative Date</label>
+                            <div class="row g-2">
+                                <div class="col">
+                                    <input type="date" class="form-control scheduler-date" 
+                                           name="scheduler[${index}][tentative_date]"
+                                           value="${item.tentative_date}" 
+                                           required
+                                           data-msg-required="Date is required">
+                                </div>
+                                ${deleteBtn}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Recalculate helpers for 70% category
+        function recalculate70Helpers() {
+            let helper = 0;
+            schedulerData.forEach((item, index) => {
+                if (item.category === '70%') {
+                    helper += parseFloat(item.percentage) || 0;
+                    item.helper = helper;
+                    $(`.scheduler-row[data-index="${index}"] .scheduler-helper`).val(helper);
+                }
+            });
+            return helper;
+        }
+
+        // Recalculate helpers for 30% category
+        function recalculate30Helpers(last70Helper) {
+            let helper = last70Helper;
+            schedulerData.forEach((item, index) => {
+                if (item.category === '30%') {
+                    helper += parseFloat(item.percentage) || 0;
+                    item.helper = helper;
+                    $(`.scheduler-row[data-index="${index}"] .scheduler-helper`).val(helper);
+                }
+            });
+            return helper;
+        }
+
+        // Add new slab
+        function addNewSlab() {
+            const unfilled = schedulerData
+                .filter(item => item.category === '70%')
+                .some(item => 
+                    item.helper === 0 || 
+                    item.percentage === 0 || 
+                    item.work_completion.trim() === '' || 
+                    item.tentative_date.trim() === ''
+                );
+
+            if (unfilled) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Please fill the existing form'
+                });
+                return;
+            }
+
+            schedulerData.splice(schedulerData.findIndex(item => item.category === '30%'), 0, {
+                helper: 0,
+                percentage: 0,
+                work_completion: '',
+                tentative_date: '',
+                is_disabled: false,
+                category: '70%',
+                is_deleted_option: true
+            });
+
+            renderScheduler();
+        }
+
+        // Delete scheduler row
+        function deleteSchedulerRow(index) {
+            schedulerData.splice(index, 1);
+            const last70Helper = recalculate70Helpers();
+            recalculate30Helpers(last70Helper);
+            renderScheduler();
+        }
+
+        // Fetch buildings
+        async function fetchBuildings() {
+            if (!selectedBranch) {
+                $('#building').html('<option value="">Select Building Name</option>');
+                return;
+            }
+
+            try {
+                showLoader();
+                const token = Cookies.get('token');
+                
+                const response = await $.ajax({
+                    url: `${baseURL}/getAddWingPageResource`,
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    data: {
+                        estate_id: user.estate_id,
+                        branch_id: selectedBranch,
+                        user_id: user.id
+                    }
+                });
+
+                if (response.status === 'success') {
+                    let options = '<option value="">Select Building Name</option>';
+                    response.data.forEach(building => {
+                        options += `<option value="${building.id}">${building.name}</option>`;
+                    });
+                    $('#building').html(options);
+                }
+            } catch (error) {
+                console.error('Error fetching buildings:', error);
+                showToast('Failed to load buildings', 'error');
+            } finally {
+                hideLoader();
+            }
+        }
+
+        // Fetch wings
+        async function fetchWings(buildingId) {
+            if (!buildingId) {
+                $('#wingContainer').hide();
+                return;
+            }
+
+            try {
+                showLoader();
+                const token = Cookies.get('token');
+                
+                const response = await $.ajax({
+                    url: `${baseURL}/getBuildingWingForPaymentScheduler`,
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    data: {
+                        building_id: buildingId,
+                        estate_id: user.estate_id,
+                        branch_id: selectedBranch
+                    }
+                });
+
+                if (response.status === 'success' && response.data.length > 0) {
+                    let checkboxes = '';
+                    response.data.forEach(wing => {
+                        const disabled = wing.is_disabled === 1 ? 'disabled' : '';
+                        checkboxes += `
+                            <div class="form-check wing-checkbox">
+                                <input class="form-check-input wing-check" type="checkbox" 
+                                       value="${wing.id}" id="wing${wing.id}" ${disabled}>
+                                <label class="form-check-label" for="wing${wing.id}">
+                                    ${wing.name}
+                                </label>
+                            </div>
+                        `;
+                    });
+                    $('#wingCheckboxes').html(checkboxes);
+                    $('#wingContainer').show();
+                } else {
+                    $('#wingContainer').hide();
+                }
+            } catch (error) {
+                console.error('Error fetching wings:', error);
+                showToast('Failed to load wings', 'error');
+            } finally {
+                hideLoader();
+            }
+        }
+
+        // Form submission
+        async function submitForm(formData) {
+            try {
+                showLoader();
+                
+                // Show success alert immediately on submit click
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Form Submitted!',
+                    text: 'Your payment scheduler is being saved...',
+                    timer: 2000,
+                    timerProgressBar: true,
+                    showConfirmButton: false
+                });
+                
+                const token = Cookies.get('token');
+                
+                const response = await $.ajax({
+                    url: `${baseURL}/savePaymentScheduler`,
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    data: formData,
+                    processData: false,
+                    contentType: false
+                });
+
+                if (response.status === 'success') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success!',
+                        text: 'Data Inserted Successfully',
+                        confirmButtonText: 'OK'
+                    }).then(() => {
+                        window.location.href = '/manage_payment_scheduler';
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error!',
+                        text: response.message
+                    });
+                }
+            } catch (error) {
+                console.error('Error submitting form:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Submission Failed',
+                    text: error.responseJSON?.error || 'Unexpected error occurred.',
+                    confirmButtonText: 'OK'
+                });
+            } finally {
+                hideLoader();
+            }
+        }
+
+        // Document ready
+        $(document).ready(function() {
+            // Set user data
+            $('#userId').val(user.id);
+            $('#estate_id').val(user.estate_id);
+            $('#estate_name').val(user.estate_name);
+
+            // Initialize scheduler
+            initializeScheduler();
+
+            // Setup jQuery Validation
+            $('#paymentSchedulerForm').validate({
+                errorClass: 'is-invalid',
+                validClass: 'is-valid',
+                errorPlacement: function(error, element) {
+                    error.addClass('invalid-feedback');
+                    element.closest('.col-12, .col-md-3, .flex-grow-1').append(error);
+                },
+                highlight: function(element) {
+                    $(element).addClass('is-invalid').removeClass('is-valid');
+                },
+                unhighlight: function(element) {
+                    $(element).removeClass('is-invalid').addClass('is-valid');
+                }
+            });
+
+            // Branch change handler
+            $('#branch').on('change', function() {
+                selectedBranch = $(this).val();
+                $('#building').val('');
+                $('#wingContainer').hide();
+                fetchBuildings();
+            });
+
+            // Building change handler
+            $('#building').on('change', function() {
+                const buildingId = $(this).val();
+                fetchWings(buildingId);
+            });
+
+            // Add slab button
+            $('#addSlabBtn').on('click', addNewSlab);
+
+            // Delete row handler
+            $(document).on('click', '.delete-row', function() {
+                const index = parseInt($(this).data('index'));
+                deleteSchedulerRow(index);
+            });
+
+            // Percentage change handler for 70% category
+            $(document).on('blur', '.scheduler-row[data-category="70%"] .scheduler-percentage', function() {
+                const index = parseInt($(this).closest('.scheduler-row').data('index'));
+                const newPercentage = parseFloat($(this).val()) || 0;
+                
+                schedulerData[index].percentage = newPercentage;
+                const last70Helper = recalculate70Helpers();
+
+                if (last70Helper > 70) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Total % exceeded!',
+                        text: 'The cumulative percentage for 70% category cannot exceed 70%.'
+                    });
+                    schedulerData[index].percentage = 0;
+                    $(this).val(0);
+                    recalculate70Helpers();
+                }
+
+                recalculate30Helpers(last70Helper);
+            });
+
+            // Percentage change handler for 30% category
+            $(document).on('blur', '.scheduler-row[data-category="30%"] .scheduler-percentage', function() {
+                const index = parseInt($(this).closest('.scheduler-row').data('index'));
+                const newPercentage = parseFloat($(this).val()) || 0;
+                
+                schedulerData[index].percentage = newPercentage;
+
+                let last70Helper = 0;
+                schedulerData.forEach(item => {
+                    if (item.category === '70%') {
+                        last70Helper = item.helper;
+                    }
+                });
+
+                const totalHelper = recalculate30Helpers(last70Helper);
+
+                if (totalHelper > 100) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Exceeded 100%',
+                        text: 'Total schedule (70% + 30%) helper cannot exceed 100%'
+                    });
+                    schedulerData[index].percentage = 0;
+                    $(this).val(0);
+                    recalculate30Helpers(last70Helper);
+                }
+            });
+
+            // Work completion change handler
+            $(document).on('change', '.scheduler-work', function() {
+                const index = parseInt($(this).closest('.scheduler-row').data('index'));
+                schedulerData[index].work_completion = $(this).val();
+            });
+
+            // Tentative date change handler
+            $(document).on('change', '.scheduler-date', function() {
+                const index = parseInt($(this).closest('.scheduler-row').data('index'));
+                schedulerData[index].tentative_date = $(this).val();
+            });
+
+            // Edit manually checkbox
+            $('#editManual').on('change', function() {
+                if ($(this).is(':checked')) {
+                    Swal.fire({
+                        title: 'Are you sure?',
+                        text: 'Do You Want To Manually Edit This Schedule?',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Yes, Edit',
+                        cancelButtonText: 'No, Cancel'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            schedulerData.forEach(item => {
+                                if (item.category === '30%') {
+                                    item.helper = 0;
+                                    item.percentage = 0;
+                                    item.is_disabled = false;
+                                }
+                            });
+                            renderScheduler();
+                            editManualEnabled = true;
+                            $(this).prop('disabled', true);
+                        } else {
+                            $(this).prop('checked', false);
+                        }
+                    });
+                }
+            });
+
+            // Form submit handler
+            $('#paymentSchedulerForm').on('submit', function(e) {
+                e.preventDefault();
+                
+                // Clear previous validation summary
+                $('#validationSummary').removeClass('active');
+                $('#validationList').empty();
+                
+                const validationErrors = [];
+
+                // Validate branch (if multiple branches)
+                if ($('#branchSelectContainer').is(':visible') && !$('#branch').val()) {
+                    validationErrors.push('Please select a branch');
+                }
+
+                // Validate building
+                if (!$('#building').val()) {
+                    validationErrors.push('Please select a building');
+                }
+
+                // Validate wings
+                const selectedWings = $('.wing-check:checked').length;
+                if ($('#wingContainer').is(':visible') && selectedWings === 0) {
+                    validationErrors.push('Please select at least one wing');
+                    $('#wingError').show();
+                } else {
+                    $('#wingError').hide();
+                }
+
+                // Validate scheduler data
+                let emptyPercentages = 0;
+                let emptyWorkCompletions = 0;
+                let emptyDates = 0;
+                let totalHelper = 0;
+
+                schedulerData.forEach((row, index) => {
+                    const percentage = parseFloat(row.percentage) || 0;
+                    const date = row.tentative_date;
+                    const work = row.work_completion;
+
+                    if (percentage <= 0) {
+                        emptyPercentages++;
+                    }
+                    if (!work || work.trim() === '') {
+                        emptyWorkCompletions++;
+                    }
+                    if (!date || date.trim() === '') {
+                        emptyDates++;
+                    }
+
+                    totalHelper = Math.max(totalHelper, row.helper);
+                });
+
+                if (emptyPercentages > 0) {
+                    validationErrors.push(`${emptyPercentages} scheduler row(s) have missing or invalid percentage values`);
+                }
+                if (emptyWorkCompletions > 0) {
+                    validationErrors.push(`${emptyWorkCompletions} scheduler row(s) have missing work completion details`);
+                }
+                if (emptyDates > 0) {
+                    validationErrors.push(`${emptyDates} scheduler row(s) have missing tentative dates`);
+                }
+
+                // Validate total percentage
+                if (totalHelper > 100) {
+                    validationErrors.push('Total schedule percentage helper exceeds 100%. Please adjust values.');
+                } else if (totalHelper < 100) {
+                    validationErrors.push('Total schedule percentage helper is less than 100%. Please complete the allocation.');
+                }
+
+                // Validate date logic (all dates should be in future or valid)
+                const today = new Date().toISOString().split('T')[0];
+                let pastDates = 0;
+                schedulerData.forEach(row => {
+                    if (row.tentative_date && row.tentative_date < today) {
+                        pastDates++;
+                    }
+                });
+                if (pastDates > 0) {
+                    validationErrors.push(`${pastDates} tentative date(s) are in the past. Please select future dates.`);
+                }
+
+                // Validate work completion uniqueness for 70% category
+                const workCompletions = schedulerData
+                    .filter(item => item.category === '70%')
+                    .map(item => item.work_completion.trim().toLowerCase())
+                    .filter(work => work !== '');
+                
+                const duplicateWorks = workCompletions.filter((item, index) => workCompletions.indexOf(item) !== index);
+                if (duplicateWorks.length > 0) {
+                    validationErrors.push('Duplicate work completion names found. Each work stage should be unique.');
+                }
+
+                // Validate sequential dates
+                let previousDate = null;
+                let dateSequenceError = false;
+                schedulerData.forEach(row => {
+                    if (row.tentative_date) {
+                        if (previousDate && row.tentative_date < previousDate) {
+                            dateSequenceError = true;
+                        }
+                        previousDate = row.tentative_date;
+                    }
+                });
+                if (dateSequenceError) {
+                    validationErrors.push('Tentative dates should be in sequential order (earlier stages should have earlier dates).');
+                }
+
+                // Show validation errors if any
+                if (validationErrors.length > 0) {
+                    validationErrors.forEach(error => {
+                        $('#validationList').append(`<li>${error}</li>`);
+                    });
+                    $('#validationSummary').addClass('active');
+                    
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Validation Failed',
+                        html: `<div style="text-align: left;">
+                                <p>Please fix the following errors:</p>
+                                <ul style="text-align: left;">
+                                    ${validationErrors.map(err => `<li>${err}</li>`).join('')}
+                                </ul>
+                               </div>`,
+                        confirmButtonText: 'OK'
+                    });
+                    
+                    // Scroll to top to show validation summary
+                    $('html, body').animate({
+                        scrollTop: $('#validationSummary').offset().top - 100
+                    }, 500);
+                    
+                    return false;
+                }
+
+                // If all validations pass, prepare FormData
+                const formData = new FormData(this);
+
+                // Add wings
+                $('.wing-check:checked').each(function(index) {
+                    formData.append(`wing_names[${index}]`, $(this).val());
+                });
+
+                // Add scheduler data
+                schedulerData.forEach((item, index) => {
+                    formData.append(`scheduler[${index}][helper]`, item.helper);
+                    formData.append(`scheduler[${index}][percentage]`, item.percentage);
+                    formData.append(`scheduler[${index}][work_completion]`, item.work_completion);
+                    formData.append(`scheduler[${index}][tentative_date]`, item.tentative_date);
+                    formData.append(`scheduler[${index}][category]`, item.category);
+                });
+
+                // Final confirmation before submit
+                Swal.fire({
+                    title: 'Confirm Submission',
+                    html: `
+                        <div style="text-align: left;">
+                            <p><strong>Building:</strong> ${$('#building option:selected').text()}</p>
+                            <p><strong>Selected Wings:</strong> ${selectedWings}</p>
+                            <p><strong>Total Schedule Percentage:</strong> ${totalHelper}%</p>
+                            <p><strong>Number of Milestones:</strong> ${schedulerData.length}</p>
+                            <br>
+                            <p>Are you sure you want to submit this payment scheduler?</p>
+                        </div>
+                    `,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, Submit',
+                    cancelButtonText: 'Cancel',
+                    confirmButtonColor: '#0d6efd',
+                    cancelButtonColor: '#6c757d'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        submitForm(formData);
+                    }
+                });
+            });
+
+            // Reset button handler
+            $('#resetBtn').on('click', function() {
+                Swal.fire({
+                    title: 'Reset Form?',
+                    text: 'All your changes will be lost. This action cannot be undone.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, Reset',
+                    cancelButtonText: 'Cancel',
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $('#paymentSchedulerForm')[0].reset();
+                        $('#wingContainer').hide();
+                        $('#validationSummary').removeClass('active');
+                        $('#validationList').empty();
+                        initializeScheduler();
+                        editManualEnabled = false;
+                        $('#editManual').prop('checked', false).prop('disabled', false);
+                        showToast('Form has been reset', 'info');
+                    }
+                });
+            });
+
+            // Load initial data (mock for single branch access)
+            // In production, replace this with your actual branch access logic
+            selectedBranch = '1'; // Mock branch ID
+            fetchBuildings();
+        });
+    </script>
+</body>
+</html>
